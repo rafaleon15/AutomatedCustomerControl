@@ -55,7 +55,7 @@ SMS_BODY = "Temboury Abogados\n" \
            "Tiene pendiente pasar por nuestras oficinas para efectuar el pago de {}€"
 
 MENSATEK_USERNAME = "rafaleon15@hotmail.com"
-MENSATEK_PASSWORD = "XXX"
+MENSATEK_PASSWORD = "###XXX"
 error_count = 0
 
 #Sends a mail with the passed information
