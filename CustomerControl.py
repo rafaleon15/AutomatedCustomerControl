@@ -57,6 +57,9 @@ SMS_BODY = "Temboury Abogados\n" \
 MENSATEK_USERNAME = "rafaleon15@hotmail.com"
 MENSATEK_PASSWORD = "###XXX"
 error_count = 0
+sms_count = 0
+mail_past_date_count = 0
+mail_future_date_count = 0
 
 #Sends a mail with the passed information
 def sendNormalMail(receipt, subject, body, os_name):
@@ -81,6 +84,8 @@ def processAlarmPastDate(current_date, check_date, date_alarm, mail_subject, mai
                 print(str(math.floor(diff_date.days/DAYS_PER_MONTH)) + ' months')
                 print(mail_subject)            
                 sendMail(mail_subject, mail_body, str(row), concept, str(check_date.strftime('%d, %b %Y')), str(math.floor(diff_date.days/DAYS_PER_MONTH)), os_name)
+                global mail_past_date_count
+                mail_past_date_count = mail_past_date_count + 1
     except ValueError:
         global error_count
         error_count = error_count + 1        
@@ -94,6 +99,8 @@ def processAlarmFutureDate(current_date, check_date, date_alarm, mail_subject, m
                 print(str(math.floor(diff_date.days/DAYS_PER_MONTH)) + ' months')
                 print(mail_subject)            
                 sendMail(mail_subject, mail_body, str(row), concept, str(check_date.strftime('%d, %b %Y')), str(math.floor(diff_date.days/DAYS_PER_MONTH)), os_name)
+                global mail_future_date_count
+                mail_future_date_count = mail_future_date_count + 1
     except ValueError:
         global error_count
         error_count = error_count + 1        
@@ -164,10 +171,11 @@ def processPaymentSMS(pay_date, company_amount, phone, os_name):
             if (os_name != "nt"):
                 #sendSMSClickatell('34679269491', SMS_BODY, company_amount) 
                 #sendSMSMblox1('679269491', SMS_BODY, company_amount)
-                sendSMSMensatek(phone, SMS_BODY, company_amount)               
-            #else:            
-            #    sendSMSMblox2('34679269491', SMS_BODY, company_amount)
+                sendSMSMensatek(phone, SMS_BODY, company_amount)        
+            global sms_count
+            sms_count = sms_count + 1
     except ValueError:
+        global error_count
         error_count = error_count + 1
         sendNormalMail(DEBUG_MAIL_RECEIPT, DEBUG_MAIL_SUBJECT_NOK, DEBUG_MAIL_BODY_NOK, os_name)
     
@@ -208,8 +216,9 @@ try:
         i = i + 1
     
     if error_count == 0:
-        sendNormalMail(DEBUG_MAIL_RECEIPT, DEBUG_MAIL_SUBJECT_OK, DEBUG_MAIL_BODY_OK, os.name)
-        print("Finished OK")
+        sendNormalMail(DEBUG_MAIL_RECEIPT, DEBUG_MAIL_SUBJECT_OK, DEBUG_MAIL_BODY_OK + "sms = " + str(sms_count) + 
+                       ", mail_past_date = " + str(mail_past_date_count) + ", mail_future_date= " + str(mail_future_date_count), os.name)
+        print("Finished OK, sms = " + str(sms_count)  + ", mail_past_date = " + str(mail_past_date_count) + ", mail_future_date= " + str(mail_future_date_count))
     else: 
         sendNormalMail(DEBUG_MAIL_RECEIPT, DEBUG_MAIL_SUBJECT_NOK, DEBUG_MAIL_BODY_NOK, os.name)
         print("Finished NOK!!!!!!")
