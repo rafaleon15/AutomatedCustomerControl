@@ -59,39 +59,41 @@ MENSATEK_PASSWORD = "###XXX"
 error_count = 0
 
 #Sends a mail with the passed information
-def sendNormalMail(receipt, subject, body):
+def sendNormalMail(receipt, subject, body, os_name):
     mail = 'echo "' + body + '" | mail -a "Content-Type: text/plain; charset=UTF-8" -s "' + \
             subject + '" ' + receipt
-    os.system(mail)
+    if (os_name != "nt"):
+        os.system(mail)
 
 #Sends a mail with the passed information
-def sendMail(subject, body, row, concept, date, passed_months):
+def sendMail(subject, body, row, concept, date, passed_months, os_name):
     mail = 'echo "' + body.format(passed_months, row, concept, date) + '" | mail -a "Content-Type: text/plain; charset=UTF-8" -s "' + \
             subject.format(concept) + '" ' + MAIL_RECEIPT
-    os.system(mail)   
+    if (os_name != "nt"):
+        os.system(mail)   
 
 #Sends an alarm email if the date passed from the current date is higher than date_alarm
-def processAlarmPastDate(current_date, check_date, date_alarm, mail_subject, mail_body, row, concept):
+def processAlarmPastDate(current_date, check_date, date_alarm, mail_subject, mail_body, row, concept, os_name):
     try:
         if (check_date != None and isinstance(check_date, date)):
             diff_date = current_date - check_date
             if (diff_date > timedelta(days = date_alarm)):            
                 print(str(math.floor(diff_date.days/DAYS_PER_MONTH)) + ' months')
                 print(mail_subject)            
-                sendMail(mail_subject, mail_body, str(row), concept, str(check_date.strftime('%d, %b %Y')), str(math.floor(diff_date.days/DAYS_PER_MONTH)))
+                sendMail(mail_subject, mail_body, str(row), concept, str(check_date.strftime('%d, %b %Y')), str(math.floor(diff_date.days/DAYS_PER_MONTH)), os_name)
     except ValueError:
         global error_count
         error_count = error_count + 1        
 
 #Sends an alarm email if the date passed from the current date is higher than date_alarm
-def processAlarmFutureDate(current_date, check_date, date_alarm, mail_subject, mail_body, row, concept):
+def processAlarmFutureDate(current_date, check_date, date_alarm, mail_subject, mail_body, row, concept, os_name):
     try:
         if (check_date != None and isinstance(check_date, date)):
             diff_date = check_date - current_date
             if (diff_date < timedelta(days = date_alarm)):            
                 print(str(math.floor(diff_date.days/DAYS_PER_MONTH)) + ' months')
                 print(mail_subject)            
-                sendMail(mail_subject, mail_body, str(row), concept, str(check_date.strftime('%d, %b %Y')), str(math.floor(diff_date.days/DAYS_PER_MONTH)))
+                sendMail(mail_subject, mail_body, str(row), concept, str(check_date.strftime('%d, %b %Y')), str(math.floor(diff_date.days/DAYS_PER_MONTH)), os_name)
     except ValueError:
         global error_count
         error_count = error_count + 1        
@@ -167,7 +169,7 @@ def processPaymentSMS(pay_date, company_amount, phone, os_name):
             #    sendSMSMblox2('34679269491', SMS_BODY, company_amount)
     except ValueError:
         error_count = error_count + 1
-        sendNormalMail(DEBUG_MAIL_RECEIPT, DEBUG_MAIL_SUBJECT_NOK, DEBUG_MAIL_BODY_NOK)
+        sendNormalMail(DEBUG_MAIL_RECEIPT, DEBUG_MAIL_SUBJECT_NOK, DEBUG_MAIL_BODY_NOK, os_name)
     
     
 
@@ -185,33 +187,37 @@ master = wb['Cobros']
 current_date = datetime.now()
 
 i = 2;
-while (master[CONCEPT_COLUMN + str(i)].value != None):
-    concept = master[CONCEPT_COLUMN + str(i)].value
-    phone = master[PHONE_COLUMN + str(i)].value
-    claim_date = master[CLAIM_DATE_COLUMN + str(i)].value
-    accident_date = master[ACCIDENT_DATE_COLUMN + str(i)].value
-    pay_date = master[PAY_DATE_COLUMN + str(i)].value
-    company_amount = master[COMPANY_AMOUNT_COLUMN + str(i)].value
-    finished = master[FINISHED_COLUMN + str(i)].value
+try: 
+    while (master[CONCEPT_COLUMN + str(i)].value != None):
+        concept = master[CONCEPT_COLUMN + str(i)].value
+        phone = master[PHONE_COLUMN + str(i)].value
+        claim_date = master[CLAIM_DATE_COLUMN + str(i)].value
+        accident_date = master[ACCIDENT_DATE_COLUMN + str(i)].value
+        pay_date = master[PAY_DATE_COLUMN + str(i)].value
+        company_amount = master[COMPANY_AMOUNT_COLUMN + str(i)].value
+        finished = master[FINISHED_COLUMN + str(i)].value
+        print('Concept: ' + concept + ', Phone: ' + str(phone) + ', Claim Date: ' + str(claim_date) + ', Prescription date: ' + str(accident_date) + 
+              ', Pay date: ' + str(pay_date) + ', Company amount: ' + str(company_amount) + ', Finished: ' + str(finished))
+        if (finished is not None and finished.upper() != 'SI'):
+            #Process claim date alarm
+            processAlarmPastDate(current_date, claim_date, CLAIM_DATE_ALARM, MAIL_SUBJECT_CLAIM_ALARM, MAIL_BODY_CLAIM_ALARM, i, concept, os.name)
+            #Process accident date alarm    
+            processAlarmFutureDate(current_date, accident_date, ACCIDENT_DATE_ALARM, MAIL_SUBJECT_ACCIDENT_ALARM, MAIL_BODY_ACCIDENT_ALARM, i, concept, os.name)
+            #Process SMS remainder for payment
+            processPaymentSMS(pay_date, company_amount, phone, os.name)
+        i = i + 1
     
-    print('Concept: ' + concept + ', Phone: ' + str(phone) + ', Claim Date: ' + str(claim_date) + ', Prescription date: ' + str(accident_date) + 
-          ', Pay date: ' + str(pay_date) + ', Company amount: ' + str(company_amount) + ', Finished: ' + finished)
-    if (finished.upper() != 'SI'):
-        #Process claim date alarm
-        processAlarmPastDate(current_date, claim_date, CLAIM_DATE_ALARM, MAIL_SUBJECT_CLAIM_ALARM, MAIL_BODY_CLAIM_ALARM, i, concept)
-        #Process accident date alarm    
-        processAlarmFutureDate(current_date, accident_date, ACCIDENT_DATE_ALARM, MAIL_SUBJECT_ACCIDENT_ALARM, MAIL_BODY_ACCIDENT_ALARM, i, concept)
-        #Process SMS remainder for payment
-        processPaymentSMS(pay_date, company_amount, phone, os.name)
-    i = i + 1
-
-if error_count == 0:
-    sendNormalMail(DEBUG_MAIL_RECEIPT, DEBUG_MAIL_SUBJECT_OK, DEBUG_MAIL_BODY_OK)
-    print("Finished OK")
-else: 
-    sendNormalMail(DEBUG_MAIL_RECEIPT, DEBUG_MAIL_SUBJECT_NOK, DEBUG_MAIL_BODY_NOK)
-    print("Finished NOK!!!!!!")
-          
+    if error_count == 0:
+        sendNormalMail(DEBUG_MAIL_RECEIPT, DEBUG_MAIL_SUBJECT_OK, DEBUG_MAIL_BODY_OK, os.name)
+        print("Finished OK")
+    else: 
+        sendNormalMail(DEBUG_MAIL_RECEIPT, DEBUG_MAIL_SUBJECT_NOK, DEBUG_MAIL_BODY_NOK, os.name)
+        print("Finished NOK!!!!!!")
+except ValueError:
+    sendNormalMail(DEBUG_MAIL_RECEIPT, DEBUG_MAIL_SUBJECT_NOK, DEBUG_MAIL_BODY_NOK, os.name)
+    print("Finished NOK at line " + i + "!!!!!!")
+    
+    
     
 
 #################################################################################
